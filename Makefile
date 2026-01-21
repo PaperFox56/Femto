@@ -1,10 +1,15 @@
 CC=gcc
-PROJECT=femto
+CFLAGS= -Wall -Wextra -pedantic --std=c99
+TARGET=femto
+SOURCES=src/*.c src/*/*.c
 
-SOURCES=src/main.c
+all: $(TARGET)
 
-$(PROJECT): $(SOURCES)
-	gcc $(SOURCES) -o $(PROJECT) -Wall -Wextra -pedantic --std=c99
+$(TARGET): $(SOURCES)
+	gcc $(SOURCES) -o $@ $(CFLAGS)
 
 run:
-	./$(PROJECT)
+	./$(TARGET)
+
+clean: $(TARGET)
+	rm $(TARGET)
