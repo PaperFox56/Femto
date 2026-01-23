@@ -15,6 +15,8 @@ extern "C" {
 // (It's implemented in main.c but you can make your own implementation)
 void panic(const char *s);
 
+void print_log(const char* s, ...);
+
 #ifdef __cplusplus
 }
 #endif

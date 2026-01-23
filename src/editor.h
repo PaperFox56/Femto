@@ -28,6 +28,13 @@ void editor_clean_screen();
 void editor_refresh_screen();
 void editor_process_keypress();
 
+// File management
+// Open a file, read it's content, and fill a new file buffer
+void editor_open_file(const char *path);
+
+// Operations to do when the editor exit, whether it's caused by an error or not
+void editor_on_exit();
+
 #ifdef __cplusplus
 }
 #endif
