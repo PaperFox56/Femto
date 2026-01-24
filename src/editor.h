@@ -11,16 +11,26 @@ extern "C" {
 #define reset_cursor_position() write(STDOUT_FILENO, "\x1b[H", 3)
 
 struct EditorConfig {
-  // cursor position
+  // cursor position in the file
   int cx;
   int cy;
+
+  // scroll offsets
+  int rows_offset;
+  int cols_offset;
+
+  int margins;
 
   // screen dimensions
   int screen_rows;
   int screen_cols;
+
+  // editor dimensions (screen dimension minus some UI elements)
+  int rows;
+  int cols;
 };
 
-void initEditor();
+void init_editor();
 
 /// Cleans the entire terminal screen and position the cursor at the top left
 void editor_clean_screen();

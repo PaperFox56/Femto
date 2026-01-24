@@ -16,7 +16,10 @@ enum EditorKey {
   HOME_KEY,
   END_KEY,
 
-  DEL_KEY
+  DEL_KEY,
+
+
+  NOP
 
 };
 
@@ -25,7 +28,7 @@ This function was originaly in terminal.c but was moved here for consistancy sak
  */
 
 /// Read the input from the keyboard and send the corresponding code to the editor
-int editorReadKey();
+int editor_read_key();
 
 
 #ifdef __cplusplus

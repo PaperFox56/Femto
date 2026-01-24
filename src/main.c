@@ -21,10 +21,13 @@ void panic(const char *s) {
 
 void print_log(const char* restrict format, ...) {
   va_list params;
+  va_start(params, format);
 
-  if (fprintf(log_file, format, params) == -1) {
+  if (vfprintf(log_file, format, params) == -1) {
     perror("printing in the log file");
   }
+
+  va_end(params);
 }
 
 void close_log_file() {
@@ -40,7 +43,7 @@ void clean_and_exit() {
   editor_on_exit();
 }
 
-int main() {
+int main(int args, char** argv) {
 
   // Open the log file
   if ((log_file = fopen(log_file_path, "w")) == NULL) {
@@ -52,10 +55,11 @@ int main() {
   enable_raw_mode();
 
   // Let's open a test file 
-  editor_open_file("test_file");
+  if (args > 1)
+    editor_open_file(argv[1]);
 
   while (1) {
-    initEditor();
+    init_editor();
     editor_refresh_screen();
     editor_process_keypress();
   }

@@ -4,7 +4,7 @@
 #include "../global.h"
 #include "input.h"
 
-int editorReadKey() {
+int editor_read_key() {
   int nread;
   char c;
 
@@ -12,6 +12,9 @@ int editorReadKey() {
     if (nread == -1 && errno != EAGAIN)
       panic("read");
   }
+
+  // if (nread == -1)
+  //   return NOP;
 
   // Add support for escaped sequences
   if (c == '\x1b') {
