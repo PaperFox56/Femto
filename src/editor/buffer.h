@@ -23,11 +23,15 @@ struct CharBuffer {
 
 // File buffer, used to store the state of an edited file
 struct FileBuffer {
-    struct CharBuffer *lines;
+    struct CharBuffer *raw; // The actual text
+    struct CharBuffer *format;  // What is rendered on the screen
     size_t len;    // Line count
     size_t capacity;
 
-    unsigned int file_id; // ID given by the file manager, it will be useful when it comes to save the file
+    // The full path used to open the file (relative or absolute)
+    struct CharBuffer path;
+    // The name of the file
+    struct CharBuffer file_name;
 };
 
 

@@ -1,7 +1,7 @@
 #include <stdlib.h>
 
 #include "../buffer.h"
-#include "../global.h"
+#include "../../global.h"
 
 typedef struct FileBuffer FileBuffer;
 typedef struct CharBuffer CharBuffer;
@@ -9,12 +9,17 @@ typedef struct CharBuffer CharBuffer;
 
 int FileBuffer_init(struct FileBuffer* file_buffer) {
 
-  void *new = malloc(16 * sizeof(CharBuffer));
-  if (new == NULL) {
+  void *raw = malloc(16 * sizeof(CharBuffer));
+  void *format = malloc(16 * sizeof(CharBuffer));
+  if (format == NULL || raw == NULL) {
     return -1;
   }
 
-  file_buffer->lines = (CharBuffer *)new;
+  CharBuffer_init(&file_buffer->path);
+  CharBuffer_init(&file_buffer->file_name);
+
+  file_buffer->raw = (CharBuffer *)raw;
+  file_buffer->format = (CharBuffer *)format;
   file_buffer->capacity = 16;
   file_buffer->len = 0;
 
@@ -32,12 +37,14 @@ int FileBuffer_grow(struct FileBuffer* file_beffer, size_t needed) {
   while (new_capacity < file_beffer->len + needed + 1)
     new_capacity *= 2;
 
-  // the reallocation can fail
-  CharBuffer *new_buf = realloc(file_beffer->lines, new_capacity * sizeof(CharBuffer));
-  if (!new_buf)
+  // the reallocations can fail
+  CharBuffer *new_raw = realloc(file_beffer->raw, new_capacity * sizeof(CharBuffer));
+  CharBuffer *new_format = realloc(file_beffer->format, new_capacity * sizeof(CharBuffer));
+  if (new_format == NULL || new_raw == NULL)
     return -1;
 
-  file_beffer->lines = new_buf;
+  file_beffer->raw = new_raw;
+  file_beffer->format = new_format;
   file_beffer->capacity = new_capacity;
 
   return 0;
@@ -50,7 +57,8 @@ int FileBuffer_add_line(FileBuffer *file_buffer) {
 
   // We initialize the new line with a \0
 
-  CharBuffer_init(&file_buffer->lines[file_buffer->len]);
+  CharBuffer_init(&file_buffer->raw[file_buffer->len]);
+  CharBuffer_init(&file_buffer->format[file_buffer->len]);
 
   file_buffer->len++;
 
@@ -73,13 +81,13 @@ int FileBuffer_append_text(struct FileBuffer *file_buffer, const char *s) {
   while ((c = s[i++]) != '\0') {
     // If we hit a newline character, we need to create a new line
     if (c == '\n') {
-      
+
       if (FileBuffer_add_line(file_buffer) == -1)
         panic("Adding a line to a file buffer");
 
       last_line++;
     } else {
-      CharBuffer_append_text(&(file_buffer->lines[last_line]), &c, 1);
+      CharBuffer_append_text(&(file_buffer->raw[last_line]), &c, 1);
     }
   }
 
@@ -89,11 +97,14 @@ int FileBuffer_append_text(struct FileBuffer *file_buffer, const char *s) {
 void FileBuffer_free(FileBuffer *file_buffer) {
   // Clean each line buffer
   for (unsigned int i = 0; i < file_buffer->len; i++) {
-    CharBuffer_free(&file_buffer->lines[i]);
+    CharBuffer_free(&file_buffer->raw[i]);
+    CharBuffer_free(&file_buffer->format[i]);
   }
 
   // make sure to not leave any garbage values in the struct
-  free(file_buffer->lines);
-  file_buffer->lines = NULL;
+  free(file_buffer->raw);
+  free(file_buffer->format);
+  file_buffer->raw = NULL;
+  file_buffer->format = NULL;
   file_buffer->len = 0;
 }

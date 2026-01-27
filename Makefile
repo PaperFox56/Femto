@@ -1,7 +1,7 @@
 CC=gcc
 CFLAGS= -Wall -Wextra -pedantic --std=c99
 TARGET=bin/femto
-SOURCES=src/*.c src/*/*.c
+SOURCES=src/*.c src/*/*.c src/*/*/*.c
 
 all: $(TARGET)
 

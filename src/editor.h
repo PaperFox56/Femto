@@ -6,14 +6,18 @@ extern "C" {
 #endif
 
 #include "terminal.h"
+#include "editor/buffer.h"
 
 #define clear_screen() write(STDOUT_FILENO, "\x1b[2J", 4)
 #define reset_cursor_position() write(STDOUT_FILENO, "\x1b[H", 3)
 
 struct EditorConfig {
-  // cursor position in the file
+  // cursor position in the formated text
   int cx;
   int cy;
+
+  // cursor position in the raw text
+  int rx;
 
   // scroll offsets
   int rows_offset;
@@ -30,7 +34,13 @@ struct EditorConfig {
   int cols;
 };
 
-void init_editor();
+void editor_init();
+
+/* Drawing functions */
+// Draw the text form the file buffer on the screen allong with optional UI (lines numbers for example)
+void editor_draw_rows(struct CharBuffer *ab);
+//
+void editor_draw_status_line(struct CharBuffer *ab);
 
 /// Cleans the entire terminal screen and position the cursor at the top left
 void editor_clean_screen();
@@ -38,7 +48,7 @@ void editor_clean_screen();
 void editor_refresh_screen();
 void editor_process_keypress();
 
-// File management
+/* File management */
 // Open a file, read it's content, and fill a new file buffer
 void editor_open_file(const char *path);
 

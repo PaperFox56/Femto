@@ -1,68 +1,7 @@
-This is a test file.
-A really long test file.
+void init_editor() {
+	if (getWindowSize(&editor.screen_rows, &editor.screen_cols) == -1)
+	d	panic(getWindowSize");
 
-
-I use it to test the scrooling capabilities of the editor.
-
-
-That's why there are those empty lines everywhere.
-
-
-I can't think of something to fill them up.
-
-But it doesn't matter, right?
-
-
-
-
-Ok that one was maybe too much.
-
-
-
-But hey, I'm short of inspiration.
-
-So just take that as it is.
-
-
-
-
-
-
-
-Yep, big leap right there.
-
-
-I'm so smart.
-
-What ? There is still a few lines to go ?
-
-
-Oh man.
-
-Whatever, let's do this. I don't think I ever wrote such a useless peace of text.
-
-
-
-Ok I'm just writing garbage from there on.
-
-
-fryferfergwtwrybw.
-tbwtr
-btrbr
-b
-
-
-
-b
-trbtrwbttttttttttttttttttttttttttttttwetrvwfvafvafvafv.sbgrrrrrrrrrrvebavtvatbv,rrravvrrqrfrqff
-w
-
-
-Brillant peace of engineering.
-v
-ef
-v
-ervw
-
-rvervwerrrrrrrrrrrrrrrrrrrrrrrrvaeaerverv
-rvavreravrvervae
+	editor.rows = editor.screen_rows;
+	editor.cols = editor.screen_cols - editor.margins;
+}

@@ -57,7 +57,12 @@ int CharBuffer_append_text(CharBuffer *cb, const char *s, size_t len) {
 }
 
 void CharBuffer_free(CharBuffer *char_buffer) {
-  free(char_buffer->buf); // free the internal buffer
+
+  if (char_buffer == NULL)
+    return;
+
+  if (char_buffer->buf)
+    free(char_buffer->buf); // free the internal buffer
 
   char_buffer->buf = NULL;
   char_buffer->len = 0;

@@ -1,3 +1,7 @@
 ansi_color_cheet_sheet
 *.log
 bin/
+
+tests*/
+
+.*

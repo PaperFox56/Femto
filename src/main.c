@@ -8,7 +8,6 @@
 
 static const char *log_file_path = "femto.log";
 
-FILE *log_file = NULL;
 
 // Blow up the all thing and let the OS clean after us
 void panic(const char *s) {
@@ -20,6 +19,12 @@ void panic(const char *s) {
 }
 
 void print_log(const char* restrict format, ...) {
+  // Open the log file
+  FILE *log_file = NULL;
+  if ((log_file = fopen(log_file_path, "a")) == NULL) {
+    perror("opening the log file");
+  }
+
   va_list params;
   va_start(params, format);
 
@@ -28,38 +33,36 @@ void print_log(const char* restrict format, ...) {
   }
 
   va_end(params);
-}
 
-void close_log_file() {
-  if (log_file != NULL) {
-    fclose(log_file);
-    log_file = NULL;
-  }
+  fclose(log_file);
 }
 
 void clean_and_exit() {
-  close_log_file();
 
   editor_on_exit();
 }
 
 int main(int args, char** argv) {
-
-  // Open the log file
+  // Clean the logs
+  FILE *log_file = NULL;
   if ((log_file = fopen(log_file_path, "w")) == NULL) {
     perror("opening the log file");
   }
+  fclose(log_file);
 
+
+  // Main stuff
   atexit(clean_and_exit);
 
   enable_raw_mode();
+
+  editor_init();
 
   // Let's open a test file 
   if (args > 1)
     editor_open_file(argv[1]);
 
   while (1) {
-    init_editor();
     editor_refresh_screen();
     editor_process_keypress();
   }
