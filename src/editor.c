@@ -47,11 +47,11 @@ void editor_init() {
 
   editor.margins = margins;
 
-  editor.rows = editor.screen_rows-2;
+  editor.rows = editor.screen_rows - 2;
   editor.cols = editor.screen_cols - editor.margins;
 
-
-  CharBuffer_init(&editor.message);
+  if (CharBuffer_init(&editor.message))
+    panic("Initializing the message buffer");
 
   editor_set_message("Hello, welcome to femto editor !");
 }
@@ -137,6 +137,7 @@ void editor_move_cursor(int key) {
     if ((unsigned int)editor.cy < file_buffer.len - 1)
       editor.cy++;
     break;
+
   }
 
   line = ((unsigned int)editor.cy < file_buffer.len)
@@ -165,6 +166,19 @@ void editor_move_cursor(int key) {
   }
 }
 
+// Delete a single character form the raw file buffer
+void editor_delete_character(int key) {
+  if (key == BACKSPACE) {
+    if (editor.cx == 0)
+      return;
+    else
+     editor_move_cursor(ARROW_LEFT);
+  }
+
+  editor.cx--;
+  CharBuffer_remove_chars(&file_buffer.raw[editor.cy], editor.rx, 1);
+}
+
 void editor_process_keypress() {
   int c = editor_read_key();
   switch (c) {
@@ -179,14 +193,14 @@ void editor_process_keypress() {
   case PAGE_UP:
   case PAGE_DOWN: {
     // Scroll to the top or the bottom of the page
-    int to_be_scrolled = editor.rows-2;
+    int to_be_scrolled = editor.rows - 2;
     editor.cx = 0;
     if (c == PAGE_UP) {
-      editor.cy = editor.rows_offset+1;
+      editor.cy = editor.rows_offset + 1;
     } else {
       // place the cursor at the botom of the screen
       unsigned int min = editor.rows_offset + editor.rows - 1;
-      min = min > file_buffer.len ? file_buffer.len-1 : min-1;
+      min = min > file_buffer.len ? file_buffer.len - 1 : min - 1;
       editor.cy = min;
     }
     while (to_be_scrolled--) {
@@ -212,7 +226,13 @@ void editor_process_keypress() {
   case ARROW_LEFT:
     editor_move_cursor(c);
     break;
+
+  case BACKSPACE:
+  case DEL_KEY:
+    editor_delete_character(c);
+    break;  
   }
+
 }
 
 void editor_open_file(const char *path) {
@@ -241,10 +261,9 @@ void editor_open_file(const char *path) {
       panic("This file is too big to be opened in the editor");
     }
   }
-  
+
   if (file_buffer.len == 0)
     FileBuffer_add_line(&file_buffer);
-
 
   free(line);
   fclose(file);
@@ -253,7 +272,6 @@ void editor_open_file(const char *path) {
   for (unsigned int i = 0; i < file_buffer.len; i++) {
     format_raw_text(&file_buffer.raw[i], &file_buffer.format[i]);
   }
-
 }
 
 void editor_on_exit() {

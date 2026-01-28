@@ -41,7 +41,11 @@ int CharBuffer_init(struct CharBuffer* char_buffer);
 int CharBuffer_grow(struct CharBuffer* char_buffer, size_t needed);
 
 // Add text at the end of a preallocated CharBuffer
-int CharBuffer_append_text(struct CharBuffer *ab, const char *s, size_t len);
+int CharBuffer_append_text(struct CharBuffer *char_buffer, const char *s, size_t len);
+
+// Remove the given portion of text from the buffer. This function will not overwrite 
+// anything beyond the limits of the buffer.
+int CharBuffer_remove_chars(struct CharBuffer *char_buffer, size_t index, size_t len);
 
 // Deallocate the internal character buffer, then sets the lenght to 0.
 // Note that if you used an externally/stack managed buffer to as internal buffer,

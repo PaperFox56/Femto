@@ -44,16 +44,21 @@ int CharBuffer_grow(struct CharBuffer *char_buffer, size_t needed) {
   return 0;
 }
 
-int CharBuffer_append_text(CharBuffer *cb, const char *s, size_t len) {
-  if (CharBuffer_grow(cb, len) == -1)
+int CharBuffer_append_text(CharBuffer *char_buffer, const char *s, size_t len) {
+  if (CharBuffer_grow(char_buffer, len) == -1)
     return -1;
 
-  memcpy(&cb->buf[cb->len], s, len);
+  memcpy(&char_buffer->buf[char_buffer->len], s, len);
 
-  cb->len += len;
-  cb->buf[cb->len] = '\0';
+  char_buffer->len += len;
+  char_buffer->buf[char_buffer->len] = '\0';
 
-  return cb->len;
+  return char_buffer->len;
+}
+
+
+int CharBuffer_remove_chars(struct CharBuffer *char_buffer, size_t index, size_t len) {
+  return 0;
 }
 
 void CharBuffer_free(CharBuffer *char_buffer) {

@@ -5,6 +5,13 @@
 extern "C" {
 #endif
 
+
+/** Macro time **/
+// maps the lowercase letter 'x' to the Ctrl+x command
+#define CTRL_KEY(k) ((k) & 0x1f)
+
+#define BACKSPACE 127 
+
 enum EditorKey {
   ARROW_RIGHT=1000,
   ARROW_LEFT,
