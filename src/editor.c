@@ -35,8 +35,25 @@ void editor_init() {
   if (getWindowSize(&editor.screen_rows, &editor.screen_cols) == -1)
     panic("getWindowSize");
 
+  // The size of the margin is the number of digits in the biggest line number,
+  // i.e. the line count. The best algorithm is the following (as long as the
+  // maximum number of lines accepted is small enough)
+  int margins = 1;
+  int power_of_ten = 1;
+  while (file_buffer.len >= (unsigned int)power_of_ten) {
+    margins++;
+    power_of_ten *= 10;
+  }
+
+  editor.margins = margins;
+
   editor.rows = editor.screen_rows-2;
   editor.cols = editor.screen_cols - editor.margins;
+
+
+  CharBuffer_init(&editor.message);
+
+  editor_set_message("Hello, welcome to femto editor !");
 }
 
 // Adjust the scrolling variables of the editor
@@ -71,6 +88,7 @@ void editor_refresh_screen() {
 
   editor_draw_rows(&ab);
   editor_draw_status_line(&ab);
+  editor_show_message(&ab);
 
   // replace the cursor at its normal position
   char buf[32];
@@ -161,7 +179,16 @@ void editor_process_keypress() {
   case PAGE_UP:
   case PAGE_DOWN: {
     // Scroll to the top or the bottom of the page
-    int to_be_scrolled = editor.rows;
+    int to_be_scrolled = editor.rows-2;
+    editor.cx = 0;
+    if (c == PAGE_UP) {
+      editor.cy = editor.rows_offset+1;
+    } else {
+      // place the cursor at the botom of the screen
+      unsigned int min = editor.rows_offset + editor.rows - 1;
+      min = min > file_buffer.len ? file_buffer.len-1 : min-1;
+      editor.cy = min;
+    }
     while (to_be_scrolled--) {
       editor_move_cursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
     }
@@ -215,19 +242,9 @@ void editor_open_file(const char *path) {
     }
   }
   
-  FileBuffer_add_line(&file_buffer);
+  if (file_buffer.len == 0)
+    FileBuffer_add_line(&file_buffer);
 
-  // The size of the margin is the number of digits in the biggest line number,
-  // i.e. the line count. The best algorithm is the following (as long as the
-  // maximum number of lines accepted is small enough)
-  int margins = 1;
-  int power_of_ten = 1;
-  while (file_buffer.len >= (unsigned int)power_of_ten) {
-    margins++;
-    power_of_ten *= 10;
-  }
-
-  editor.margins = margins;
 
   free(line);
   fclose(file);
@@ -236,6 +253,7 @@ void editor_open_file(const char *path) {
   for (unsigned int i = 0; i < file_buffer.len; i++) {
     format_raw_text(&file_buffer.raw[i], &file_buffer.format[i]);
   }
+
 }
 
 void editor_on_exit() {

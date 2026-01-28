@@ -2,6 +2,7 @@
 #include "../global.h"
 #include "buffer.h"
 
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -84,40 +85,64 @@ void editor_draw_rows(struct CharBuffer *ab) {
   }
 }
 
-
 void editor_draw_status_line(struct CharBuffer *ab) {
 
-    // First, we invert the colors to have a white background
-    CharBuffer_append_text(ab, "\x1b[7m", 4);
+  // First, we invert the colors to have a white background
+  CharBuffer_append_text(ab, "\x1b[7m", 4);
 
-    // We will print the file_name, the row and column numberm s well as the
-    // editor version
+  // We will print the file_name, the row and column numberm s well as the
+  // editor version
 
-    unsigned int space_left = editor.screen_cols;
+  unsigned int space_left = editor.screen_cols;
 
-    struct CharBuffer temp = BUF_INIT;
-    if (CharBuffer_init(&temp) == -1)
-        return;
+  struct CharBuffer temp = BUF_INIT;
+  if (CharBuffer_init(&temp) == -1)
+    return;
 
-    CharBuffer_append_text(&temp, file_buffer.file_name.buf, file_buffer.file_name.len);
+  CharBuffer_append_text(&temp, file_buffer.file_name.buf,
+                         file_buffer.file_name.len);
 
-    char buf[32];
+  char buf[32];
 
-    snprintf(buf, 32, " (%d,%d)", editor.cy+1, editor.cx+1);
-    CharBuffer_append_text(&temp, buf, strlen(buf));
-    
-    snprintf(buf, 32, "femto "FEMTO_VERSION);
+  snprintf(buf, 32, " (%d,%d)", editor.cy + 1, editor.cx + 1);
+  CharBuffer_append_text(&temp, buf, strlen(buf));
 
-    space_left -= temp.len + strlen(buf);
-    for (unsigned int i = 0; i < space_left; i++) {
-        CharBuffer_append_text(&temp, " ", 1);
-    }
-    
-    CharBuffer_append_text(&temp, buf, strlen(buf));
+  snprintf(buf, 32, "femto " FEMTO_VERSION);
 
-    int min = temp.len > (unsigned int)editor.screen_cols ? temp.len : (unsigned int)editor.screen_cols;
-    CharBuffer_append_text(ab, temp.buf, min);
+  space_left -= temp.len + strlen(buf);
+  for (unsigned int i = 0; i < space_left; i++) {
+    CharBuffer_append_text(&temp, " ", 1);
+  }
 
-    CharBuffer_append_text(ab, "\x1b[m", 4);
-    CharBuffer_append_text(ab, "\r\n", 2);
+  CharBuffer_append_text(&temp, buf, strlen(buf));
+
+  int min = temp.len > (unsigned int)editor.screen_cols
+                ? temp.len
+                : (unsigned int)editor.screen_cols;
+  CharBuffer_append_text(ab, temp.buf, min);
+
+  CharBuffer_append_text(ab, "\x1b[m", 4);
+  CharBuffer_append_text(ab, "\r\n", 2);
+}
+
+void editor_show_message(struct CharBuffer *ab) {
+  CharBuffer_append_text(ab, editor.message.buf, editor.message.len);
+}
+
+void editor_set_message(const char *s, ...) {
+  va_list(ap);
+  va_start(ap, s);
+
+  int len = editor.screen_cols+1;
+  editor.message.len = 0;
+  CharBuffer_grow(&editor.message, len);
+
+  vsnprintf(editor.message.buf, len, s, ap);
+
+  va_end(ap);
+
+  editor.message.len = strlen(editor.message.buf);
+
+
+  editor.message_timeout = 5000;
 }

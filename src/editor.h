@@ -5,6 +5,8 @@
 extern "C" {
 #endif
 
+#include <time.h>
+
 #include "terminal.h"
 #include "editor/buffer.h"
 
@@ -32,15 +34,22 @@ struct EditorConfig {
   // editor dimensions (screen dimension minus some UI elements)
   int rows;
   int cols;
+
+  // custom message
+  struct CharBuffer message;
+  time_t message_timeout;
 };
 
 void editor_init();
+
+void editor_set_message(const char *s, ...);
 
 /* Drawing functions */
 // Draw the text form the file buffer on the screen allong with optional UI (lines numbers for example)
 void editor_draw_rows(struct CharBuffer *ab);
 //
 void editor_draw_status_line(struct CharBuffer *ab);
+void editor_show_message(struct CharBuffer *ab);
 
 /// Cleans the entire terminal screen and position the cursor at the top left
 void editor_clean_screen();

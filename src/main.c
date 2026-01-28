@@ -56,11 +56,12 @@ int main(int args, char** argv) {
 
   enable_raw_mode();
 
-  editor_init();
 
   // Let's open a test file 
   if (args > 1)
     editor_open_file(argv[1]);
+  
+  editor_init();
 
   while (1) {
     editor_refresh_screen();
