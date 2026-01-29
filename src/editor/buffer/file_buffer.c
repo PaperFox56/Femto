@@ -1,13 +1,14 @@
 #include <stdlib.h>
+#include <string.h>
 
-#include "../buffer.h"
 #include "../../global.h"
+#include "../buffer.h"
+
 
 typedef struct FileBuffer FileBuffer;
 typedef struct CharBuffer CharBuffer;
 
-
-int FileBuffer_init(struct FileBuffer* file_buffer) {
+int FileBuffer_init(struct FileBuffer *file_buffer) {
 
   void *raw = malloc(16 * sizeof(CharBuffer));
   void *format = malloc(16 * sizeof(CharBuffer));
@@ -15,8 +16,9 @@ int FileBuffer_init(struct FileBuffer* file_buffer) {
     return -1;
   }
 
-  CharBuffer_init(&file_buffer->path);
-  CharBuffer_init(&file_buffer->file_name);
+  if (CharBuffer_init(&file_buffer->path) == -1 ||
+      CharBuffer_init(&file_buffer->file_name) == -1)
+    return -1;
 
   file_buffer->raw = (CharBuffer *)raw;
   file_buffer->format = (CharBuffer *)format;
@@ -26,7 +28,7 @@ int FileBuffer_init(struct FileBuffer* file_buffer) {
   return 0;
 }
 
-int FileBuffer_grow(struct FileBuffer* file_beffer, size_t needed) {
+int FileBuffer_grow(struct FileBuffer *file_beffer, size_t needed) {
   if (file_beffer->len + needed + 1 <= file_beffer->capacity) {
     // We are chill
     return 0;
@@ -38,8 +40,10 @@ int FileBuffer_grow(struct FileBuffer* file_beffer, size_t needed) {
     new_capacity *= 2;
 
   // the reallocations can fail
-  CharBuffer *new_raw = realloc(file_beffer->raw, new_capacity * sizeof(CharBuffer));
-  CharBuffer *new_format = realloc(file_beffer->format, new_capacity * sizeof(CharBuffer));
+  CharBuffer *new_raw =
+      realloc(file_beffer->raw, new_capacity * sizeof(CharBuffer));
+  CharBuffer *new_format =
+      realloc(file_beffer->format, new_capacity * sizeof(CharBuffer));
   if (new_format == NULL || new_raw == NULL)
     return -1;
 
@@ -57,19 +61,40 @@ int FileBuffer_add_line(FileBuffer *file_buffer) {
 
   // We initialize the new line with a \0
 
-  CharBuffer_init(&file_buffer->raw[file_buffer->len]);
-  CharBuffer_init(&file_buffer->format[file_buffer->len]);
+  if (CharBuffer_init(&file_buffer->raw[file_buffer->len]) == -1 ||
+      CharBuffer_init(&file_buffer->format[file_buffer->len]) == -1)
+    return -1;
 
   file_buffer->len++;
 
   return 0;
 }
 
-int FileBuffer_append_text(struct FileBuffer *file_buffer, const char *s) {
+
+void FileBuffer_remove_line(struct FileBuffer *file_buffer, size_t index) {
+  // some bound checking to be safe
+  if (index >= file_buffer->len)
+    return;
+
+  // Unallocate the buffers first
+  CharBuffer_free(&file_buffer->raw[index]);
+  CharBuffer_free(&file_buffer->format[index]);
+
+  // number of bytes to be copied
+  size_t count = file_buffer->len - (index + 1);
+  memmove(&file_buffer->raw[index], &file_buffer->raw[index+1], count * sizeof(CharBuffer));
+  memmove(&file_buffer->format[index], &file_buffer->format[index+1], count * sizeof(CharBuffer));
+
+  file_buffer->len--;
+}
+
+void FileBuffer_append_text(struct FileBuffer *file_buffer, const char *s) {
 
   // First, we need to add a new line to the filebuffer
   if (file_buffer->len == 0) {
-    FileBuffer_add_line(file_buffer);
+    if (FileBuffer_add_line(file_buffer) == -1) {
+      panic("FileBuffer_append_text, adding a new line");
+    }
   }
 
   // Time to parse the content, and add it to the file buffer
@@ -83,15 +108,13 @@ int FileBuffer_append_text(struct FileBuffer *file_buffer, const char *s) {
     if (c == '\n') {
 
       if (FileBuffer_add_line(file_buffer) == -1)
-        panic("Adding a line to a file buffer");
+        panic("FileBuffer_append_text, adding a new line");
 
       last_line++;
     } else {
       CharBuffer_append_text(&(file_buffer->raw[last_line]), &c, 1);
     }
   }
-
-  return 0;
 }
 
 void FileBuffer_free(FileBuffer *file_buffer) {

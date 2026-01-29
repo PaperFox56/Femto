@@ -41,11 +41,12 @@ int CharBuffer_init(struct CharBuffer* char_buffer);
 int CharBuffer_grow(struct CharBuffer* char_buffer, size_t needed);
 
 // Add text at the end of a preallocated CharBuffer
-int CharBuffer_append_text(struct CharBuffer *char_buffer, const char *s, size_t len);
+// This function will panic if the operation fails
+void CharBuffer_append_text(struct CharBuffer *char_buffer, const char *s, size_t len);
 
 // Remove the given portion of text from the buffer. This function will not overwrite 
 // anything beyond the limits of the buffer.
-int CharBuffer_remove_chars(struct CharBuffer *char_buffer, size_t index, size_t len);
+void CharBuffer_remove_chars(struct CharBuffer *char_buffer, size_t index, size_t len);
 
 // Deallocate the internal character buffer, then sets the lenght to 0.
 // Note that if you used an externally/stack managed buffer to as internal buffer,
@@ -61,13 +62,16 @@ int FileBuffer_grow(struct FileBuffer* char_buffer, size_t needed);
 // Add an empty line at the end of a file buffer
 int FileBuffer_add_line(struct FileBuffer *file_buffer);
 
+void FileBuffer_remove_line(struct FileBuffer *file_buffer, size_t index);
+
 /* 
 Add text to a file buffer, appending new lines accordingly everytime a new line is encountered.
 If the buffer was empty, a new line will be added to store the text, otherwise, the last line is used.
 
-Returns a status code depending on the succes of the operation.
+This function will panic of the oparation fails
 */
-int FileBuffer_append_text(struct FileBuffer *file_buffer, const char *s);
+void FileBuffer_append_text(struct FileBuffer *file_buffer, const char *s);
+
 
 // Deallocate each line buffer of the file, then deallocate the array.
 // Consider looking `LineBuffer_free` in case you use external/stack managed 

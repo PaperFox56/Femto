@@ -6,6 +6,7 @@
 #include "editor.h"
 #include "global.h"
 
+
 static const char *log_file_path = "femto.log";
 
 

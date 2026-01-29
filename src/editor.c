@@ -50,7 +50,7 @@ void editor_init() {
   editor.rows = editor.screen_rows - 2;
   editor.cols = editor.screen_cols - editor.margins;
 
-  if (CharBuffer_init(&editor.message))
+  if (CharBuffer_init(&editor.message) == -1)
     panic("Initializing the message buffer");
 
   editor_set_message("Hello, welcome to femto editor !");
@@ -79,7 +79,8 @@ void editor_refresh_screen() {
 
   struct CharBuffer ab = BUF_INIT;
 
-  CharBuffer_init(&ab);
+  if (CharBuffer_init(&ab) == -1)
+    panic("Creating the screeen buffer");
 
   // hide the cursor during the draw
   CharBuffer_append_text(&ab, "\x1b[?25l", 6);
@@ -137,7 +138,6 @@ void editor_move_cursor(int key) {
     if ((unsigned int)editor.cy < file_buffer.len - 1)
       editor.cy++;
     break;
-
   }
 
   line = ((unsigned int)editor.cy < file_buffer.len)
@@ -169,14 +169,28 @@ void editor_move_cursor(int key) {
 // Delete a single character form the raw file buffer
 void editor_delete_character(int key) {
   if (key == BACKSPACE) {
-    if (editor.cx == 0)
-      return;
-    else
-     editor_move_cursor(ARROW_LEFT);
+    if (editor.cx == 0 && editor.cy != 0) {
+      // If we are at the start of the line, we should delete it and add the
+      // rest of the content on the previous line
+
+      CharBuffer_append_text(&file_buffer.raw[editor.cy - 1],
+                             file_buffer.raw[editor.cy].buf,
+                             file_buffer.raw[editor.cy].len);
+
+      FileBuffer_remove_line(&file_buffer, editor.cy);
+      editor_move_cursor(ARROW_LEFT);
+
+      goto clean; //  I like to piss of the branching purists
+    }
+
+    editor_move_cursor(ARROW_LEFT);
   }
 
-  editor.cx--;
   CharBuffer_remove_chars(&file_buffer.raw[editor.cy], editor.rx, 1);
+  // sync the formatted text
+
+clean:
+  format_raw_text(&file_buffer.raw[editor.cy], &file_buffer.format[editor.cy]);
 }
 
 void editor_process_keypress() {
@@ -230,9 +244,8 @@ void editor_process_keypress() {
   case BACKSPACE:
   case DEL_KEY:
     editor_delete_character(c);
-    break;  
+    break;
   }
-
 }
 
 void editor_open_file(const char *path) {

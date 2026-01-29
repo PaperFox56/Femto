@@ -135,7 +135,9 @@ void editor_set_message(const char *s, ...) {
 
   int len = editor.screen_cols+1;
   editor.message.len = 0;
-  CharBuffer_grow(&editor.message, len);
+
+  if (CharBuffer_grow(&editor.message, len) == -1)
+    return;
 
   vsnprintf(editor.message.buf, len, s, ap);
 
