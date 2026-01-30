@@ -1,5 +1,5 @@
 #include "format.h"
-#include "buffer.h"
+#include "buffer/char_buffer.h"
 
 #include <stdlib.h>
 
@@ -43,6 +43,7 @@ CharBuffer* format_raw_text(const CharBuffer *raw, CharBuffer *dest) {
             case '\t': {
                 int gap = TABULATION_SIZE - (pos % TABULATION_SIZE);
                 CharBuffer_append_text(dest, "    ", gap);
+                pos += gap;
             } break;
             default:
                 CharBuffer_append_text(dest, &c, 1);

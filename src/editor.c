@@ -1,7 +1,5 @@
-// Because of the `getline` function
-#include "editor/buffer.h"
-#include "editor/format.h"
-#include <stddef.h>
+
+
 #define _DEFAULT_SOURCE
 #define _BSD_SOURCE
 #define _GNU_SOURCE
@@ -13,6 +11,8 @@
 
 #include "editor.h"
 #include "editor/input.h"
+#include "editor/buffer.h"
+#include "editor/format.h"
 
 #include "global.h"
 
@@ -22,13 +22,53 @@ struct EditorConfig editor;
 // TODO: Create a better structure to handle the open files
 struct FileBuffer file_buffer = {NULL, NULL, 0, 0, BUF_INIT, BUF_INIT};
 
-void editor_init() {
+// Helper function to calculate rx from cx for a given line
+int calculate_rx_from_cx() {
+  struct CharBuffer *raw_line = &file_buffer.raw[editor.cy];
+  int pos = 0;
+  int rx = 0;
 
+  while (pos < editor.cx && (size_t)rx < raw_line->len) {
+    char c = raw_line->buf[rx];
+
+    if (c == '\t') {
+      pos += TABULATION_SIZE - (pos % TABULATION_SIZE);
+      if (pos > editor.cx)
+        break;
+    } else {
+      pos++;
+    }
+
+    rx++;
+  }
+
+  return rx;
+}
+
+// Helper function to calculate cx from rx for a given line
+int calculate_cx_from_rx() {
+  struct CharBuffer *raw_line = &file_buffer.raw[editor.cy];
+  int cx = 0;
+
+  for (int i = 0; i < editor.rx && (size_t)i < raw_line->len; i++) {
+    char c = raw_line->buf[i];
+
+    if (c == '\t') {
+      cx += TABULATION_SIZE - (cx % TABULATION_SIZE);
+    } else {
+      cx++;
+    }
+  }
+
+  editor_set_message("%d", cx);
+
+  return cx;
+}
+
+void editor_init() {
   editor.cx = 0;
   editor.cy = 0;
-
   editor.rx = 0;
-
   editor.cols_offset = 0;
   editor.rows_offset = 0;
 
@@ -46,7 +86,6 @@ void editor_init() {
   }
 
   editor.margins = margins;
-
   editor.rows = editor.screen_rows - 2;
   editor.cols = editor.screen_cols - editor.margins;
 
@@ -74,13 +113,12 @@ void editor_scroll() {
 }
 
 void editor_refresh_screen() {
-
   editor_scroll();
 
   struct CharBuffer ab = BUF_INIT;
 
   if (CharBuffer_init(&ab) == -1)
-    panic("Creating the screeen buffer");
+    panic("Creating the screen buffer");
 
   // hide the cursor during the draw
   CharBuffer_append_text(&ab, "\x1b[?25l", 6);
@@ -93,8 +131,12 @@ void editor_refresh_screen() {
 
   // replace the cursor at its normal position
   char buf[32];
+  int screen_cx = editor.cx - editor.cols_offset + editor.margins;
+  if (screen_cx < editor.margins)
+    screen_cx = editor.margins;
+
   snprintf(buf, sizeof(buf), "\x1b[%d;%dH", editor.cy - editor.rows_offset + 1,
-           editor.cx + editor.margins - editor.cols_offset + 1);
+           screen_cx + 1);
   CharBuffer_append_text(&ab, buf, strlen(buf));
   // show the cursor
   CharBuffer_append_text(&ab, "\x1b[?25h", 6);
@@ -104,99 +146,137 @@ void editor_refresh_screen() {
 }
 
 void editor_move_cursor(int key) {
-
-  struct CharBuffer *line = ((unsigned int)editor.cy < file_buffer.len)
-                                ? &file_buffer.format[editor.cy]
-                                : NULL;
+  struct CharBuffer *raw_line = ((size_t)editor.cy < file_buffer.len)
+                                    ? &file_buffer.raw[editor.cy]
+                                    : NULL;
 
   switch (key) {
   case ARROW_LEFT:
-    if (editor.cx > 0)
-      editor.cx--;
-    else if (editor.cy > 0) {
-      // This allows to go the the end of the next line from the start of the
-      // current line
+    if (editor.rx > 0) {
+      editor.rx--;
+      editor.cx = calculate_cx_from_rx();
+    } else if (editor.cy > 0) {
+      // Move to end of previous line
       editor.cy--;
-      editor.cx = file_buffer.format[editor.cy].len;
+      editor.rx = file_buffer.raw[editor.cy].len;
+      editor.cx = calculate_cx_from_rx();
     }
     break;
   case ARROW_RIGHT:
-    if ((unsigned int)editor.cx < line->len)
-      editor.cx++;
-    else if (line && (unsigned int)editor.cx == line->len &&
-             (unsigned int)editor.cy < file_buffer.len - 1) {
-      // This allows to go to the begining of the next line
+    if (raw_line && (size_t)editor.rx < raw_line->len) {
+      editor.rx++;
+      editor.cx = calculate_cx_from_rx();
+    } else if (raw_line && (size_t)editor.rx == raw_line->len &&
+               (size_t)editor.cy < file_buffer.len - 1) {
+      // Move to beginning of next line
       editor.cy++;
+      editor.rx = 0;
       editor.cx = 0;
     }
     break;
   case ARROW_UP:
-    if (editor.cy > 0)
+    if (editor.cy > 0) {
       editor.cy--;
+      // Keep rx within bounds of the new line
+      if ((size_t)editor.rx > file_buffer.raw[editor.cy].len) {
+        editor.rx = file_buffer.raw[editor.cy].len;
+      }
+      editor.cx = calculate_cx_from_rx();
+    }
     break;
   case ARROW_DOWN:
-    if ((unsigned int)editor.cy < file_buffer.len - 1)
+    if ((size_t)editor.cy < file_buffer.len - 1) {
       editor.cy++;
+      // Keep rx within bounds of the new line
+      if ((size_t)editor.rx > file_buffer.raw[editor.cy].len) {
+        editor.rx = file_buffer.raw[editor.cy].len;
+      }
+      editor.cx = calculate_cx_from_rx();
+    }
     break;
   }
 
-  line = ((unsigned int)editor.cy < file_buffer.len)
-             ? &file_buffer.format[editor.cy]
-             : NULL;
-  // Prevent the cursor from going past the end of the line
-  if (line && (unsigned int)editor.cx >= line->len) {
-    editor.cx = line->len;
-  }
-
-  // Since what is on the screen is different from the actual text, we need to
-  // calculate `rx` based on `cx`
-  line = &file_buffer.raw[editor.cy];
-  int pos = 0;
-  editor.rx = 0;
-  while (pos < editor.cx) {
-    char c = line->buf[editor.rx];
-
-    if (c == '\t') {
-      pos += TABULATION_SIZE - (pos % TABULATION_SIZE);
-    } else {
-      pos++;
-    }
-
-    editor.rx++;
+  // Ensure rx is within bounds
+  raw_line = ((size_t)editor.cy < file_buffer.len) ? &file_buffer.raw[editor.cy]
+                                                   : NULL;
+  if (raw_line && (size_t)editor.rx > raw_line->len) {
+    editor.rx = raw_line->len;
+    editor.cx = calculate_cx_from_rx();
   }
 }
 
-// Delete a single character form the raw file buffer
+// Delete a single character from the raw file buffer
 void editor_delete_character(int key) {
   if (key == BACKSPACE) {
-    if (editor.cx == 0 && editor.cy != 0) {
-      // If we are at the start of the line, we should delete it and add the
-      // rest of the content on the previous line
-
+    if (editor.rx == 0 && editor.cy > 0) {
+      // Merge current line with previous line
       CharBuffer_append_text(&file_buffer.raw[editor.cy - 1],
                              file_buffer.raw[editor.cy].buf,
                              file_buffer.raw[editor.cy].len);
 
-      FileBuffer_remove_line(&file_buffer, editor.cy);
-      editor_move_cursor(ARROW_LEFT);
+      FileBuffer_remove_lines(&file_buffer, editor.cy, 1);
+      editor.cy--;
 
-      goto clean; //  I like to piss of the branching purists
+      // Position cursor at end of merged line
+      editor.rx = file_buffer.raw[editor.cy].len;
+      editor.cx = calculate_cx_from_rx();
+
+      format_raw_text(&file_buffer.raw[editor.cy],
+                      &file_buffer.format[editor.cy]);
+      return;
     }
 
-    editor_move_cursor(ARROW_LEFT);
+    if (editor.rx > 0) {
+      editor_move_cursor(ARROW_LEFT);
+    } else {
+      return; // Nothing to delete
+    }
+  } else if (key == DEL_KEY) {
+    if ((size_t)editor.rx >= file_buffer.raw[editor.cy].len) {
+      // Delete at end of line - merge with next line
+      if ((size_t)editor.cy < file_buffer.len - 1) {
+        CharBuffer_append_text(&file_buffer.raw[editor.cy],
+                               file_buffer.raw[editor.cy + 1].buf,
+                               file_buffer.raw[editor.cy + 1].len);
+
+        FileBuffer_remove_lines(&file_buffer, editor.cy + 1, 1);
+        format_raw_text(&file_buffer.raw[editor.cy],
+                        &file_buffer.format[editor.cy]);
+      }
+      return;
+    }
   }
 
   CharBuffer_remove_chars(&file_buffer.raw[editor.cy], editor.rx, 1);
-  // sync the formatted text
-
-clean:
   format_raw_text(&file_buffer.raw[editor.cy], &file_buffer.format[editor.cy]);
 }
 
 void editor_process_keypress() {
   int c = editor_read_key();
-  switch (c) {
 
+  // Printable characters (including tab)
+  if ((c >= 32 && c <= 126) || c == '\t' || c == ENTER) {
+    // Insert the character at current rx position
+    CharBuffer_insert_text(&file_buffer.raw[editor.cy], (char *)&c, editor.rx,
+                           1);
+
+    // Update rx and cx
+    editor.rx++;
+    if (c == '\t') {
+      // Tab character inserted - calculate new cx
+      editor.cx = calculate_cx_from_rx();
+    } else {
+      editor.cx++;
+    }
+
+    // Reformat the line
+    format_raw_text(&file_buffer.raw[editor.cy],
+                    &file_buffer.format[editor.cy]);
+    return;
+  }
+
+  // Command characters
+  switch (c) {
   // Ctrl+Q -> exit
   case CTRL_KEY('q'):
     clear_screen();
@@ -206,32 +286,39 @@ void editor_process_keypress() {
 
   case PAGE_UP:
   case PAGE_DOWN: {
-    // Scroll to the top or the bottom of the page
     int to_be_scrolled = editor.rows - 2;
-    editor.cx = 0;
     if (c == PAGE_UP) {
-      editor.cy = editor.rows_offset + 1;
+      editor.cy = editor.rows_offset;
+      while (to_be_scrolled-- && editor.cy > 0) {
+        editor.cy--;
+      }
     } else {
-      // place the cursor at the botom of the screen
-      unsigned int min = editor.rows_offset + editor.rows - 1;
-      min = min > file_buffer.len ? file_buffer.len - 1 : min - 1;
-      editor.cy = min;
-    }
-    while (to_be_scrolled--) {
-      editor_move_cursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
+      // PAGE_DOWN
+      editor.cy = editor.rows_offset + editor.rows - 1;
+      if ((size_t)editor.cy >= file_buffer.len)
+        editor.cy = file_buffer.len-1;
+      while (to_be_scrolled-- &&
+             (unsigned int)editor.cy < file_buffer.len - 1) {
+        editor.cy++;
+      }
     }
 
-    editor.cx = 0;
-  } break;
+    // Keep rx within bounds of new line
+    if ((size_t)editor.rx > file_buffer.raw[editor.cy].len) {
+      editor.rx = file_buffer.raw[editor.cy].len;
+    }
+    editor.cx = calculate_cx_from_rx();
+    break;
+  }
 
   case HOME_KEY:
+    editor.rx = 0;
     editor.cx = 0;
     break;
+
   case END_KEY:
-    while ((unsigned int)editor.cx <
-           file_buffer.format[editor.cy].len) { //  go to the end of the line
-      editor_move_cursor(ARROW_RIGHT);
-    }
+    editor.rx = file_buffer.raw[editor.cy].len;
+    editor.cx = calculate_cx_from_rx();
     break;
 
   case ARROW_UP:
@@ -260,12 +347,13 @@ void editor_open_file(const char *path) {
 
   char *line = NULL;
   size_t linecap = 0;
+  int line_size = 0;
 
   CharBuffer_append_text(&file_buffer.path, path, strlen(path));
   CharBuffer_append_text(&file_buffer.file_name, path, strlen(path));
 
-  while (getline(&line, &linecap, file) != -1) {
-    FileBuffer_append_text(&file_buffer, line);
+  while ((line_size = getline(&line, &linecap, file)) != -1) {
+    FileBuffer_append_text(&file_buffer, line, line_size);
 
     if (file_buffer.len > MAX_LINE_COUNT) {
       free(line);
@@ -281,10 +369,6 @@ void editor_open_file(const char *path) {
   free(line);
   fclose(file);
 
-  // Now let's create the format buffers for display
-  for (unsigned int i = 0; i < file_buffer.len; i++) {
-    format_raw_text(&file_buffer.raw[i], &file_buffer.format[i]);
-  }
 }
 
 void editor_on_exit() {

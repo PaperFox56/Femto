@@ -4,7 +4,7 @@
 
 #include "../buffer.h"
 
-extern void panic(const char* s);
+extern void panic(const char *s);
 
 typedef struct FileBuffer FileBuffer;
 typedef struct CharBuffer CharBuffer;
@@ -46,7 +46,8 @@ int CharBuffer_grow(struct CharBuffer *char_buffer, size_t needed) {
   return 0;
 }
 
-void CharBuffer_append_text(CharBuffer *char_buffer, const char *s, size_t len) {
+void CharBuffer_append_text(CharBuffer *char_buffer, const char *s,
+                            size_t len) {
   if (CharBuffer_grow(char_buffer, len) == -1)
     panic("CharBuffer_append_text, increasing buffer capacity");
 
@@ -56,9 +57,30 @@ void CharBuffer_append_text(CharBuffer *char_buffer, const char *s, size_t len) 
   char_buffer->buf[char_buffer->len] = '\0';
 }
 
+void CharBuffer_insert_text(struct CharBuffer *char_buffer, const char *s,
+                            size_t index, size_t len) {
 
-void CharBuffer_remove_chars(struct CharBuffer *char_buffer, size_t index, size_t len) {
-  /* We will simply move part of the character to fill the gap left by the deleted text */
+  if (index > char_buffer->len)
+    return;
+
+  if (CharBuffer_grow(char_buffer, len) == -1)
+    panic("CharBuffer_insert_text, increasing buffer capacity");
+
+  // first make some room for the new text
+  size_t count = char_buffer->len - index;
+  memmove(&char_buffer->buf[index + len], &char_buffer->buf[index], count);
+
+  // copy the text
+  memcpy(&char_buffer->buf[index], s, len);
+
+  char_buffer->len += len;
+  char_buffer->buf[char_buffer->len] = '\0';
+}
+
+void CharBuffer_remove_chars(struct CharBuffer *char_buffer, size_t index,
+                             size_t len) {
+  /* We will simply move part of the character to fill the gap left by the
+   * deleted text */
 
   // some bound checking to be safe
   if (index >= char_buffer->len)
@@ -69,7 +91,7 @@ void CharBuffer_remove_chars(struct CharBuffer *char_buffer, size_t index, size_
 
   // number of bytes to be copied
   size_t count = char_buffer->len - (index + len);
-  memmove(&char_buffer->buf[index], &char_buffer->buf[index+len], count);
+  memmove(&char_buffer->buf[index], &char_buffer->buf[index + len], count);
 
   char_buffer->len -= len;
 }

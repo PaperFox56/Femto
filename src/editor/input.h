@@ -11,6 +11,7 @@ extern "C" {
 #define CTRL_KEY(k) ((k) & 0x1f)
 
 #define BACKSPACE 127 
+#define ENTER 13
 
 enum EditorKey {
   ARROW_RIGHT=1000,

@@ -139,12 +139,13 @@ void editor_set_message(const char *s, ...) {
   if (CharBuffer_grow(&editor.message, len) == -1)
     return;
 
-  vsnprintf(editor.message.buf, len, s, ap);
+  len = vsnprintf(editor.message.buf, len, s, ap);
 
   va_end(ap);
 
-  editor.message.len = strlen(editor.message.buf);
+  editor.message.len = len;
 
 
+  CharBuffer_append_text(&editor.message, "\x1b[K", 3);
   editor.message_timeout = 5000;
 }

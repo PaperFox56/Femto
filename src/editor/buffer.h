@@ -3,6 +3,7 @@
 
 
 #include <stddef.h>
+#include "buffer/char_buffer.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -13,13 +14,6 @@ extern "C" {
 #define MAX_LINE_LENGHT 1000
 #define MAX_LINE_COUNT  100000
 
-
-// Basic character buffer with memory mangement capabilities.
-struct CharBuffer {
-    char *buf;
-    size_t len;
-    size_t capacity;
-};
 
 // File buffer, used to store the state of an edited file
 struct FileBuffer {
@@ -35,24 +29,6 @@ struct FileBuffer {
 };
 
 
-// TODO: Comments
-int CharBuffer_init(struct CharBuffer* char_buffer);
-// Note this function assumes that the buffer is already initialized
-int CharBuffer_grow(struct CharBuffer* char_buffer, size_t needed);
-
-// Add text at the end of a preallocated CharBuffer
-// This function will panic if the operation fails
-void CharBuffer_append_text(struct CharBuffer *char_buffer, const char *s, size_t len);
-
-// Remove the given portion of text from the buffer. This function will not overwrite 
-// anything beyond the limits of the buffer.
-void CharBuffer_remove_chars(struct CharBuffer *char_buffer, size_t index, size_t len);
-
-// Deallocate the internal character buffer, then sets the lenght to 0.
-// Note that if you used an externally/stack managed buffer to as internal buffer,
-// calling this function may cause a double free and a segfault.
-void CharBuffer_free(struct CharBuffer *line_buffer);
-
 
 // TODO: Comments
 int FileBuffer_init(struct FileBuffer* char_buffer);
@@ -62,7 +38,13 @@ int FileBuffer_grow(struct FileBuffer* char_buffer, size_t needed);
 // Add an empty line at the end of a file buffer
 int FileBuffer_add_line(struct FileBuffer *file_buffer);
 
-void FileBuffer_remove_line(struct FileBuffer *file_buffer, size_t index);
+// Insert `len` lines at the given index
+int FileBuffer_insert_lines(struct FileBuffer *file_buffer, size_t index, size_t len);
+
+void FileBuffer_remove_lines(struct FileBuffer *file_buffer, size_t index, size_t len);
+
+
+void FileBuffer_insert_text(struct FileBuffer *file_buffer, const char *s, size_t line, size_t index, size_t maxlen);
 
 /* 
 Add text to a file buffer, appending new lines accordingly everytime a new line is encountered.
@@ -70,7 +52,7 @@ If the buffer was empty, a new line will be added to store the text, otherwise, 
 
 This function will panic of the oparation fails
 */
-void FileBuffer_append_text(struct FileBuffer *file_buffer, const char *s);
+void FileBuffer_append_text(struct FileBuffer *file_buffer, const char *s, size_t maxlen);
 
 
 // Deallocate each line buffer of the file, then deallocate the array.
