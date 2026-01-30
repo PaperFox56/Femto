@@ -10,9 +10,9 @@
 #include <unistd.h>
 
 #include "editor.h"
-#include "editor/input.h"
 #include "editor/buffer.h"
 #include "editor/format.h"
+#include "editor/input.h"
 
 #include "global.h"
 
@@ -255,10 +255,10 @@ void editor_process_keypress() {
   int c = editor_read_key();
 
   // Printable characters (including tab)
-  if ((c >= 32 && c <= 126) || c == '\t' || c == ENTER) {
+  if ((c >= 32 && c <= 126) || c == '\t') {
     // Insert the character at current rx position
     CharBuffer_insert_text(&file_buffer.raw[editor.cy], (char *)&c, editor.rx,
-                           1);
+                            1);
 
     // Update rx and cx
     editor.rx++;
@@ -296,7 +296,7 @@ void editor_process_keypress() {
       // PAGE_DOWN
       editor.cy = editor.rows_offset + editor.rows - 1;
       if ((size_t)editor.cy >= file_buffer.len)
-        editor.cy = file_buffer.len-1;
+        editor.cy = file_buffer.len - 1;
       while (to_be_scrolled-- &&
              (unsigned int)editor.cy < file_buffer.len - 1) {
         editor.cy++;
@@ -332,6 +332,12 @@ void editor_process_keypress() {
   case DEL_KEY:
     editor_delete_character(c);
     break;
+  case ENTER: {
+    // Create a new line and split the current one in two
+    FileBuffer_insert_text(&file_buffer, "\n", editor.cy, editor.rx, 1);
+    editor_move_cursor(ARROW_RIGHT);
+
+  } break;
   }
 }
 
@@ -368,7 +374,6 @@ void editor_open_file(const char *path) {
 
   free(line);
   fclose(file);
-
 }
 
 void editor_on_exit() {

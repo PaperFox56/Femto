@@ -4,8 +4,8 @@
 
 #include "../global.h"
 #include "buffer.h"
+#include "buffer/char_buffer.h"
 #include "format.h"
-
 
 typedef struct FileBuffer FileBuffer;
 typedef struct CharBuffer CharBuffer;
@@ -72,8 +72,8 @@ int FileBuffer_add_line(FileBuffer *file_buffer) {
   return 0;
 }
 
-
-void FileBuffer_remove_lines(struct FileBuffer *file_buffer, size_t index, size_t len) {
+void FileBuffer_remove_lines(struct FileBuffer *file_buffer, size_t index,
+                             size_t len) {
   // some bound checking to be safe
   if (index + len > file_buffer->len)
     return;
@@ -86,13 +86,16 @@ void FileBuffer_remove_lines(struct FileBuffer *file_buffer, size_t index, size_
 
   // number of bytes to be copied
   size_t count = file_buffer->len - (index + len);
-  memmove(&file_buffer->raw[index], &file_buffer->raw[index+len], count * sizeof(CharBuffer));
-  memmove(&file_buffer->format[index], &file_buffer->format[index+len], count * sizeof(CharBuffer));
+  memmove(&file_buffer->raw[index], &file_buffer->raw[index + len],
+          count * sizeof(CharBuffer));
+  memmove(&file_buffer->format[index], &file_buffer->format[index + len],
+          count * sizeof(CharBuffer));
 
   file_buffer->len -= len;
 }
 
-int FileBuffer_insert_lines(struct FileBuffer *file_buffer, size_t index, size_t len) {
+int FileBuffer_insert_lines(struct FileBuffer *file_buffer, size_t index,
+                            size_t len) {
 
   if (index > file_buffer->len)
     return -1;
@@ -101,16 +104,19 @@ int FileBuffer_insert_lines(struct FileBuffer *file_buffer, size_t index, size_t
     return -1; // the reallocation failled
   }
 
-  // first make some room for the new text
-  size_t count = file_buffer->len - index;
+  // first make some room for the new lines
+  size_t count = file_buffer->len - (index + len);
+  count *= sizeof(CharBuffer);
   memmove(&file_buffer->raw[index + len], &file_buffer->raw[index], count);
-  memmove(&file_buffer->format[index + len], &file_buffer->format[index], count);
+  memmove(&file_buffer->format[index + len], &file_buffer->format[index],
+          count);
 
   // We initialize the new lines with a \0
-  for (size_t i = index; i < index+len; i++) {
+  for (size_t i = index; i < index + len; i++) {
     if (CharBuffer_init(&file_buffer->raw[i]) == -1 ||
         CharBuffer_init(&file_buffer->format[i]) == -1)
-      // At that point we have a really big issue, we have to terminate the program
+      // At that point we have a really big issue, we have to terminate the
+      // program
       panic("FileBuffer_insert_lines, initialising the new buffers");
   }
 
@@ -119,41 +125,79 @@ int FileBuffer_insert_lines(struct FileBuffer *file_buffer, size_t index, size_t
   return 0;
 }
 
-void FileBuffer_insert_text(FileBuffer *file_buffer, const char *s, size_t line, size_t index, size_t maxlen) {
-  if (line >= file_buffer->len) 
+void FileBuffer_insert_text(FileBuffer *file_buffer, const char *s, size_t line,
+                            size_t index, size_t maxlen) {
+  // Bounds checks
+  if (line >= file_buffer->len)
     return;
 
-  if (index >= file_buffer->raw[line].len)
+  if (index > file_buffer->raw[line].len)
+    index = file_buffer->raw[line].len;
+
+  // Here the approch will be slitly different than with
+  // `FileBuffer_append_text`. To avoid calling `FileBuffer_insert_lines` a lot
+  // of time, we will alllocate a new File_buffer. The new lines will be added
+  // to that buffer before being pushed into the orginal one all at once. We can
+  // just copy the structures as the allocated memory will not be freed during
+  // the process.
+
+  FileBuffer temp;
+  if (FileBuffer_init(&temp) == -1) {
     return;
-
-  // Time to parse the content, and add it to the file buffer
-  char c = s[0];
-  size_t i = 0;
-
-  // the buffer should at leat contain a line at this point 
-  size_t last_line = file_buffer->len - 1;
-
-  size_t start = 0;
-
-  while ((c = s[i]) != '\0' && i < maxlen) {
-    // If we hit a newline character, we need to create a new line
-    if (c == '\n' || c == '\r') {
-      // Copy all the buffered tex
-      CharBuffer_append_text(&(file_buffer->raw[last_line]), &s[start], i - start);
-
-      if (FileBuffer_add_line(file_buffer) == -1)
-        panic("FileBuffer_append_text, adding a new line");
-
-      last_line++;
-
-      start = i+1;
-    }
-
-    i++;
   }
+
+  FileBuffer_append_text(&temp, s, maxlen);
+
+  /* Now copy over to the target */
+  CharBuffer_insert_text(&file_buffer->raw[line], temp.raw[0].buf, index,
+                         temp.raw[0].len);
+
+  if (FileBuffer_grow(file_buffer, temp.len) == -1) {
+    goto clean; // the reallocation failled
+  }
+
+  // make some room for the new lines
+  size_t start = line + 1;
+  size_t end = start + temp.len - 1; // the first line is omitted
+  size_t count = file_buffer->len - end;
+  count *= sizeof(CharBuffer);
+  memmove(&file_buffer->raw[end], &file_buffer->raw[start], count);
+  memmove(&file_buffer->format[end], &file_buffer->format[start], count);
+
+  // We can finally move things from the temporary buffer
+  count = (temp.len - 1) * sizeof(CharBuffer);
+  memmove(&file_buffer->raw[start], &temp.raw[1], count);
+  memmove(&file_buffer->format[start], &temp.format[1], count);
+
+  file_buffer->len += temp.len - 1;
+  temp.len = 1;
+
+  if (temp.len == 1) {
+    // Everything went well, the added text didn't contain any new line
+    // character We only need to reformat the initial line
+    format_raw_text(&file_buffer->raw[line], &file_buffer->format[line]);
+  } else {
+    // The added text contained a new line character. We need to find it and
+    // kill it -.- .
+
+    size_t cut_position = index + temp.raw[0].len;
+    CharBuffer_insert_text(&file_buffer->raw[line+1],
+                           &file_buffer->raw[line].buf[cut_position], 0,
+                           file_buffer->raw[line].len - cut_position);
+
+    file_buffer->raw[line].len = cut_position;
+
+    format_raw_text(&file_buffer->raw[line], &file_buffer->format[line]);
+    format_raw_text(&file_buffer->raw[line + 1],
+                    &file_buffer->format[line + 1]);
+  }
+
+clean:
+  FileBuffer_free(&temp);
 }
 
-void FileBuffer_append_text(struct FileBuffer *file_buffer, const char *s, size_t maxlen) {
+void FileBuffer_append_text(struct FileBuffer *file_buffer, const char *s,
+                            size_t maxlen) {
 
   // First, we need to add a new line to the filebuffer
   if (file_buffer->len == 0) {
@@ -166,8 +210,10 @@ void FileBuffer_append_text(struct FileBuffer *file_buffer, const char *s, size_
   char c = s[0];
   size_t i = 0;
 
-  // the buffer should at leat contain a line at this point 
-  size_t first_line = file_buffer->len - 1; // We keep track of this one to reformat every modified line later 
+  // the buffer should at least contain a line at this point
+  size_t first_line =
+      file_buffer->len -
+      1; // We keep track of this one to reformat every modified line later
   size_t last_line = first_line;
 
   size_t start = 0;
@@ -175,19 +221,23 @@ void FileBuffer_append_text(struct FileBuffer *file_buffer, const char *s, size_
   while ((c = s[i]) != '\0' && i < maxlen) {
     // If we hit a newline character, we need to create a new line
     if (c == '\n' || c == '\r') {
-      // Copy all the buffered tex
-      CharBuffer_append_text(&(file_buffer->raw[last_line]), &s[start], i - start);
+      // Copy all the buffered text
+      CharBuffer_append_text(&(file_buffer->raw[last_line]), &s[start],
+                             i - start);
 
       if (FileBuffer_add_line(file_buffer) == -1)
         panic("FileBuffer_append_text, adding a new line");
 
       last_line++;
 
-      start = i+1;
+      start = i + 1;
     }
 
     i++;
   }
+
+  // Copy whatever is still there
+  CharBuffer_append_text(&(file_buffer->raw[last_line]), &s[start], i - start);
 
   // Now let's create the format buffers for display
   for (unsigned int i = first_line; i < file_buffer->len; i++) {
