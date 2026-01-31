@@ -30,6 +30,10 @@ int CharBuffer_grow(struct CharBuffer *char_buffer, size_t needed) {
     return 0;
   }
 
+  if (char_buffer->capacity < 16) {
+    panic("CharBuffer_grow: WTF?? ");
+  }
+
   // grow by doubling the capacity
   size_t new_capacity = char_buffer->capacity;
   while (new_capacity < char_buffer->len + needed + 1)
@@ -67,8 +71,13 @@ void CharBuffer_insert_text(struct CharBuffer *char_buffer, const char *s,
     panic("CharBuffer_insert_text, increasing buffer capacity");
 
   // first make some room for the new text
-  size_t count = char_buffer->len - index;
-  memmove(&char_buffer->buf[index + len], &char_buffer->buf[index], count);
+  size_t end = index + len;
+  if (end > char_buffer->len)
+    end = char_buffer->len;
+
+  size_t count = char_buffer->len - end;
+  if (count > 0)
+    memmove(&char_buffer->buf[end], &char_buffer->buf[index], count);
 
   // copy the text
   memcpy(&char_buffer->buf[index], s, len);

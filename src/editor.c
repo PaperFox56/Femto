@@ -60,8 +60,6 @@ int calculate_cx_from_rx() {
     }
   }
 
-  editor_set_message("%d", cx);
-
   return cx;
 }
 
@@ -209,6 +207,8 @@ void editor_move_cursor(int key) {
 void editor_delete_character(int key) {
   if (key == BACKSPACE) {
     if (editor.rx == 0 && editor.cy > 0) {
+      // Position cursor at the merge point
+      editor.rx = file_buffer.raw[editor.cy-1].len;
       // Merge current line with previous line
       CharBuffer_append_text(&file_buffer.raw[editor.cy - 1],
                              file_buffer.raw[editor.cy].buf,
@@ -217,8 +217,6 @@ void editor_delete_character(int key) {
       FileBuffer_remove_lines(&file_buffer, editor.cy, 1);
       editor.cy--;
 
-      // Position cursor at end of merged line
-      editor.rx = file_buffer.raw[editor.cy].len;
       editor.cx = calculate_cx_from_rx();
 
       format_raw_text(&file_buffer.raw[editor.cy],

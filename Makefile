@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS= -Wall -Wextra -pedantic --std=c99
+CFLAGS= -Wall -Wextra -pedantic --std=c99 -g
 TARGET=bin/femto
 SOURCES=src/*.c src/*/*.c src/*/*/*.c
 

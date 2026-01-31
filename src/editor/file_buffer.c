@@ -30,28 +30,33 @@ int FileBuffer_init(struct FileBuffer *file_buffer) {
   return 0;
 }
 
-int FileBuffer_grow(struct FileBuffer *file_beffer, size_t needed) {
-  if (file_beffer->len + needed + 1 <= file_beffer->capacity) {
+int FileBuffer_grow(struct FileBuffer *file_buffer, size_t needed) {
+  if (file_buffer->len + needed + 1 <= file_buffer->capacity) {
     // We are chill
     return 0;
   }
 
+  if (file_buffer->capacity < 16) {
+    panic("CharBuffer_grow: WTF?? ");
+  }
+
   // grow by doubling the capacity
-  size_t new_capacity = file_beffer->capacity;
-  while (new_capacity < file_beffer->len + needed + 1)
+  size_t new_capacity = file_buffer->capacity;
+  while (new_capacity < file_buffer->len + needed + 1)
     new_capacity *= 2;
 
   // the reallocations can fail
+  size_t byte_capacity = new_capacity * sizeof(CharBuffer);
   CharBuffer *new_raw =
-      realloc(file_beffer->raw, new_capacity * sizeof(CharBuffer));
+      realloc(file_buffer->raw, byte_capacity);
   CharBuffer *new_format =
-      realloc(file_beffer->format, new_capacity * sizeof(CharBuffer));
+      realloc(file_buffer->format, byte_capacity);
   if (new_format == NULL || new_raw == NULL)
     return -1;
 
-  file_beffer->raw = new_raw;
-  file_beffer->format = new_format;
-  file_beffer->capacity = new_capacity;
+  file_buffer->raw = new_raw;
+  file_buffer->format = new_format;
+  file_buffer->capacity = new_capacity;
 
   return 0;
 }
@@ -75,7 +80,7 @@ int FileBuffer_add_line(FileBuffer *file_buffer) {
 void FileBuffer_remove_lines(struct FileBuffer *file_buffer, size_t index,
                              size_t len) {
   // some bound checking to be safe
-  if (index + len > file_buffer->len)
+  if (index >= file_buffer->len)
     return;
 
   // Unallocate the buffers first
@@ -85,11 +90,18 @@ void FileBuffer_remove_lines(struct FileBuffer *file_buffer, size_t index,
   }
 
   // number of bytes to be copied
-  size_t count = file_buffer->len - (index + len);
-  memmove(&file_buffer->raw[index], &file_buffer->raw[index + len],
-          count * sizeof(CharBuffer));
-  memmove(&file_buffer->format[index], &file_buffer->format[index + len],
-          count * sizeof(CharBuffer));
+  // first make some room for the new text
+  size_t end = index + len;
+  if (end >= file_buffer->len)
+    end = file_buffer->len - 1;
+
+  size_t count = file_buffer->len - end;
+  if (count > 0) {
+    memmove(&file_buffer->raw[index], &file_buffer->raw[end],
+            count * sizeof(CharBuffer));
+    memmove(&file_buffer->format[index], &file_buffer->format[end],
+            count * sizeof(CharBuffer));
+  }
 
   file_buffer->len -= len;
 }
@@ -157,20 +169,27 @@ void FileBuffer_insert_text(FileBuffer *file_buffer, const char *s, size_t line,
   }
 
   // make some room for the new lines
-  size_t start = line + 1;
-  size_t end = start + temp.len - 1; // the first line is omitted
-  size_t count = file_buffer->len - end;
-  count *= sizeof(CharBuffer);
-  memmove(&file_buffer->raw[end], &file_buffer->raw[start], count);
-  memmove(&file_buffer->format[end], &file_buffer->format[start], count);
+  size_t start = line + 1;          // first line to be copied
+  size_t end = line + temp.len - 1; // last line to be copied
+
+  // Fix a memory violation bug I encountered during testing. 
+  // If `end` is too big, `count` overflows an create undefined behaviour
+  if (end > file_buffer->len)
+    end = file_buffer->len;
+
+  size_t count = file_buffer->len - end + 1;
+  if (count > 0) {
+    count *= sizeof(CharBuffer);
+    memmove(&file_buffer->raw[end+1], &file_buffer->raw[start], count);
+    memmove(&file_buffer->format[end+1], &file_buffer->format[start], count);
+  }
 
   // We can finally move things from the temporary buffer
   count = (temp.len - 1) * sizeof(CharBuffer);
-  memmove(&file_buffer->raw[start], &temp.raw[1], count);
-  memmove(&file_buffer->format[start], &temp.format[1], count);
+  memcpy(&file_buffer->raw[start], &temp.raw[1], count);
+  memcpy(&file_buffer->format[start], &temp.format[1], count);
 
   file_buffer->len += temp.len - 1;
-  temp.len = 1;
 
   if (temp.len == 1) {
     // Everything went well, the added text didn't contain any new line
@@ -181,16 +200,18 @@ void FileBuffer_insert_text(FileBuffer *file_buffer, const char *s, size_t line,
     // kill it -.- .
 
     size_t cut_position = index + temp.raw[0].len;
-    CharBuffer_insert_text(&file_buffer->raw[line+1],
+    CharBuffer_insert_text(&file_buffer->raw[line + 1],
                            &file_buffer->raw[line].buf[cut_position], 0,
                            file_buffer->raw[line].len - cut_position);
 
     file_buffer->raw[line].len = cut_position;
+    file_buffer->raw[line].buf[cut_position] = '\0';
 
     format_raw_text(&file_buffer->raw[line], &file_buffer->format[line]);
     format_raw_text(&file_buffer->raw[line + 1],
                     &file_buffer->format[line + 1]);
   }
+  temp.len = 1;
 
 clean:
   FileBuffer_free(&temp);
