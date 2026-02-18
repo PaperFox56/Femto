@@ -2,7 +2,6 @@
 
 bin/
 tests/
+obj/
 
 .*
-
-test_file

@@ -3,7 +3,7 @@
 
 
 #include <stddef.h>
-#include "buffer/char_buffer.h"
+#include "../buffer/char_buffer.h"
 
 #ifdef __cplusplus
 extern "C" {

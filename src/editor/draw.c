@@ -1,6 +1,5 @@
-#include "../editor.h"
-#include "../global.h"
-#include "buffer.h"
+#include "editor.h"
+#include "../common/macros.h"
 
 #include <stdarg.h>
 #include <stdio.h>

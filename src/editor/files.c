@@ -1,14 +1,14 @@
 
-#include "buffer/char_buffer.h"
 #define _DEFAULT_SOURCE
 #define _BSD_SOURCE
 #define _GNU_SOURCE
 
-#include "../editor.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "editor.h"
 
 extern void panic(const char *s);
 

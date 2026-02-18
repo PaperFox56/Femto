@@ -5,7 +5,8 @@
 
 #include <termios.h>
 
-#include "global.h"
+#include "../common/functions.h"
+
 #include "terminal.h"
 
 // Save of the original terminal state to be restored at the end of the program

@@ -1,5 +1,4 @@
 #include "format.h"
-#include "buffer/char_buffer.h"
 
 #include <stdlib.h>
 

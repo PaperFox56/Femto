@@ -5,8 +5,6 @@
 extern "C" {
 #endif
 
-
-
 int get_window_size(int *rows, int *cols);
 
 //

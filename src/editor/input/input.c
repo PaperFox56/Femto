@@ -1,7 +1,7 @@
 #include <errno.h>
 #include <unistd.h>
 
-#include "../global.h"
+#include "../../common/functions.h"
 #include "input.h"
 
 int editor_read_key() {

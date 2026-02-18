@@ -1,80 +1,42 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
+#include <unistd.h>
 
-#include "editor.h"
-#include "global.h"
+#include "editor/editor.h"
 
-#include "terminal.h"
+#include "common/functions.h
+#include "common/macros.h"
 
+#include "terminal/terminal.h"
 
-static const char *log_file_path = "femto.log";
-static const char *help_str =
-"Femto editor version "FEMTO_VERSION" - Help text\n"
-"Usage:\n"
-"    femto [file]\n"
-;
+static const char help_str[] =
+    "Femto editor version " FEMTO_VERSION " - Help text\n"
+    "Usage:\n"
+    "    femto [file]\n";
 
-// Blow up the all thing and let the OS clean after us
-void panic(const char *s) {
-  clear_screen();
-  reset_cursor_position();
+void clean_and_exit() { editor_on_exit(); }
 
-  perror(s);
-  exit(1);
-}
+int main(int args, char **argv) {
 
-void print_log(const char* restrict format, ...) {
-  // Open the log file
-  FILE *log_file = NULL;
-  if ((log_file = fopen(log_file_path, "a")) == NULL) {
-    perror("opening the log file");
-  }
-
-  va_list params;
-  va_start(params, format);
-
-  if (vfprintf(log_file, format, params) == -1) {
-    perror("printing in the log file");
-  }
-
-  va_end(params);
-
-  fclose(log_file);
-}
-
-void clean_and_exit() {
-
-  editor_on_exit();
-}
-
-int main(int args, char** argv) {
-  // Clean the logs
-  FILE *log_file = NULL;
-  if ((log_file = fopen(log_file_path, "w")) == NULL) {
-    perror("opening the log file");
-  }
-  fclose(log_file);
-
-
+  // Parse command line arguments
   if (args > 1) {
     if (argv[1][0] == '-') {
       // Display an help message
       printf(help_str);
       exit(0);
     } else {
+
       editor_open_file(argv[1]);
     }
   }
- 
-  // Main stuff
-  atexit(clean_and_exit);
 
+  // security mesure
+  atexit(clean_and_exit);
   enable_raw_mode();
 
- 
+  // Main stuff
   editor_init();
 
   while (1) {
@@ -84,3 +46,12 @@ int main(int args, char** argv) {
 
   return 0;
 }
+
+void panic(const char *s) {
+  clear_screen();
+  reset_cursor_position();
+
+  perror(s);
+  exit(1);
+}
+

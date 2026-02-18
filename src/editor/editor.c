@@ -5,13 +5,12 @@
 #include <unistd.h>
 
 #include "editor.h"
-#include "editor/buffer.h"
-#include "editor/format.h"
-#include "editor/input.h"
+#include "format/format.h"
+#include "input/input.h"
 
-#include "terminal.h"
+#include "../terminal/terminal.h"
 
-#include "global.h"
+#include "../common/functions.h"
 
 struct EditorConfig editor;
 

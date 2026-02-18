@@ -7,7 +7,7 @@ extern "C" {
 
 #include <time.h>
 
-#include "editor/buffer.h"
+#include "file_buffer/file_buffer.h"
 
 #define clear_screen() write(STDOUT_FILENO, "\x1b[2J", 4)
 #define reset_cursor_position() write(STDOUT_FILENO, "\x1b[H", 3)

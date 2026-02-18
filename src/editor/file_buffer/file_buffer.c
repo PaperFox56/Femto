@@ -2,10 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../global.h"
-#include "buffer.h"
-#include "buffer/char_buffer.h"
-#include "format.h"
+#include "../../common/functions.h"
+#include "../format/format.h"
+#include "file_buffer.h"
 
 typedef struct FileBuffer FileBuffer;
 typedef struct CharBuffer CharBuffer;

@@ -9,7 +9,7 @@ editor/format.h
 This file defines primitives for handling the formating of text by the editor.h
 */
 
-#include "buffer.h"
+#include "../file_buffer/file_buffer.h"
 
 #ifdef __cplusplus
 extern "C" {
