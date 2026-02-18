@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../buffer.h"
+#include "char_buffer.h"
 
 extern void panic(const char *s);
 
