@@ -1,18 +1,20 @@
 # Femto
 
-A lightweight, terminal-based text editor inspired by Nano, written in C.
+> A lightweight, terminal-based text editor inspired by Nano, written in C.
+
+That's what I would write if I wanned to sound professional.
+Let's be clear on this one: you do NOT want to use this editor as your daily editor.
+This is a fun project I'm doing. But if you want to contribute, maybe we can turn it into an actually functionning editor.
 
 ## Features
 
-- **Minimal and Fast**: Lightweight C implementation with minimal dependencies
-- **Nano-inspired**: Familiar keybindings and interface reminiscent of Nano editor
+- **Minimal and Fast**: Lightweight C implementation with minimal dependencies. (Translation: memory management was made by me, do whatever you want with that info)
 - **Terminal-based**: Full TUI (Text User Interface) for editing files in the terminal
 - **Cross-platform**: Runs on Unix-like systems (Linux, macOS, BSD)
 
 ## Getting Started
 
 ### Prerequisites
-
 - GCC compiler
 - Make
 - POSIX-compliant terminal
@@ -50,55 +52,35 @@ make release
 femto filename.txt
 
 # Open without arguments to start with empty buffer
+# Note: This feature is not supported yet, even though it would
+literally take me two minutes to do it. Maybe in the next commmit, maybe not.
 femto
 ```
 
 ### Basic Navigation
 
 - **Arrow Keys**: Move cursor up, down, left, right
-- **Ctrl+Home**: Move to start of file
-- **Ctrl+End**: Move to end of file
+- **Home**: Move to start of line
+- **End**: Move to end of line
 - **Page Up/Down**: Scroll through document
+
+Notes:
+Those features were more difficult to implement than I thought. Like, how ?
+- You can go to the next line from the end of the current one.
+- You can go to the previous line from the start of the current one. (I know this blows you mind)
+- You can delete and add lines.
 
 ### Editing
 
 - **Regular Keys**: Type to insert text
 - **Backspace**: Delete character before cursor
 - **Delete**: Delete character at cursor
-- **Tab**: Insert tab character (configurable width)
+- **Tab**: Insert tab character (configurable width (*you have to recompile the whole thing everytime*))
 
 ### File Operations
 
 - **Ctrl+S**: Save file
-- **Ctrl+O**: Open file
-- **Ctrl+X**: Exit editor (prompts to save if unsaved changes)
-
-### Other Commands
-
-- **Ctrl+G**: Go to line
-- **Ctrl+F**: Find text
-- **Ctrl+H**: Find and replace
-
-## Project Structure
-
-```
-femto/
-├── src/
-│   ├── main.c           # Entry point and initialization
-│   ├── editor.h         # Editor configuration and interface
-│   ├── editor.c         # Core editor logic
-│   ├── terminal.h       # Terminal handling interface
-│   ├── terminal.c       # Terminal mode configuration
-│   ├── global.h         # Global utilities and constants
-│   └── editor/          # Editor subsystems
-│       ├── buffer.h     # Text buffer management
-│       ├── input.h      # Input processing
-│       └── format.h     # Text formatting and display
-├── Makefile             # Build configuration
-└── LICENSE              # License information
-```
-
-## Architecture
+- **Ctrl+Q**: Exit editor (NO PROMPT TO SAVE YET !!)
 
 ### Core Components
 
@@ -118,13 +100,6 @@ femto/
 - Handles character and line buffers
 - Supports text operations (insert, delete, etc.)
 
-### Key Design Patterns
-
-- **State Management**: `EditorConfig` struct maintains editor state
-- **Double Buffering**: Uses character buffers for efficient rendering
-- **Signal Handling**: Proper cleanup on exit via `atexit()`
-- **Raw Mode**: Terminal operates in raw mode for direct control
-
 ## Version
 
 Current version: **0.0.1** (Alpha)
@@ -140,12 +115,11 @@ Contributions are welcome! Please feel free to submit issues and pull requests.
 See the LICENSE file for details.
 
 ## Future Enhancements
-
-- [ ] Syntax highlighting
+- [ ] File system errors handling
 - [ ] Multiple file support/tabs
 - [ ] Undo/Redo functionality
 - [ ] Search and replace
 - [ ] Configuration file support
-- [ ] Mouse support
+- [ ] Mouse support (maybe some day)
 - [ ] Line wrapping options
 - [ ] Performance optimizations for large files
