@@ -6,7 +6,7 @@
 
 #include "editor/editor.h"
 
-#include "common/functions.h
+#include "common/functions.h"
 #include "common/macros.h"
 
 #include "terminal/terminal.h"
