@@ -2,13 +2,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 
 #include "editor.h"
 #include "global.h"
 
+#include "terminal.h"
+
 
 static const char *log_file_path = "femto.log";
-
+static const char *help_str =
+"Femto editor version "FEMTO_VERSION" - Help text\n"
+"Usage:\n"
+"    femto [file]\n"
+;
 
 // Blow up the all thing and let the OS clean after us
 void panic(const char *s) {
@@ -52,16 +59,22 @@ int main(int args, char** argv) {
   fclose(log_file);
 
 
+  if (args > 1) {
+    if (argv[1][0] == '-') {
+      // Display an help message
+      printf(help_str);
+      exit(0);
+    } else {
+      editor_open_file(argv[1]);
+    }
+  }
+ 
   // Main stuff
   atexit(clean_and_exit);
 
   enable_raw_mode();
 
-
-  // Let's open a test file 
-  if (args > 1)
-    editor_open_file(argv[1]);
-  
+ 
   editor_init();
 
   while (1) {

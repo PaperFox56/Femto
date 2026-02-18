@@ -7,7 +7,6 @@ extern "C" {
 
 #include <time.h>
 
-#include "terminal.h"
 #include "editor/buffer.h"
 
 #define clear_screen() write(STDOUT_FILENO, "\x1b[2J", 4)
@@ -60,6 +59,8 @@ void editor_process_keypress();
 /* File management */
 // Open a file, read it's content, and fill a new file buffer
 void editor_open_file(const char *path);
+// Save a file to the disk by overwriting it with the content of the file buffer
+void editor_save_file(const struct FileBuffer *file_buffer);
 
 // Operations to do when the editor exit, whether it's caused by an error or not
 void editor_on_exit();

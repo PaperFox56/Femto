@@ -99,8 +99,8 @@ void editor_draw_status_line(struct CharBuffer *ab) {
   if (CharBuffer_init(&temp) == -1)
     return;
 
-  CharBuffer_append_text(&temp, file_buffer.file_name.buf,
-                         file_buffer.file_name.len);
+  CharBuffer_append_text(&temp, file_buffer.path.buf,
+                         file_buffer.path.len);
 
   char buf[32];
 

@@ -6,7 +6,8 @@ extern "C" {
 #endif
 
 
-int getWindowSize(int *rows, int *cols);
+
+int get_window_size(int *rows, int *cols);
 
 //
 void enable_raw_mode();

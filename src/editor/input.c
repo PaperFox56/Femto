@@ -82,6 +82,17 @@ int editor_read_key() {
     return '\x1b';
 
   } else {
+
+    switch (c) {
+    case CTRL_KEY('p'):
+      return ARROW_UP;
+    case CTRL_KEY('n'):
+      return ARROW_DOWN;
+    case CTRL_KEY('f'):
+      return ARROW_RIGHT;
+    case CTRL_KEY('b'):
+      return ARROW_LEFT;
+  }
     return c;
   }
 }

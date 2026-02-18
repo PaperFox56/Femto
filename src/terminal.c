@@ -52,7 +52,7 @@ void enable_raw_mode() {
   }
 }
 
-int getCursorPosition(int *rows, int *cols) {
+int get_cursor_position(int *rows, int *cols) {
   // The n command (Device Status Report) can be used to query the terminal for
   // status information. We want to give it an argument of 6 to ask for the
   // cursor position.
@@ -83,7 +83,7 @@ int getCursorPosition(int *rows, int *cols) {
   return 0;
 }
 
-int getWindowSize(int *rows, int *cols) {
+int get_window_size(int *rows, int *cols) {
   struct winsize ws;
 
   if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
@@ -108,7 +108,7 @@ int getWindowSize(int *rows, int *cols) {
     */
     if (write(STDOUT_FILENO, "\x1b[999C\x1b[999B", 12) != 12)
       return -1;
-    return getCursorPosition(rows, cols);
+    return get_cursor_position(rows, cols);
   } else {
     *cols = ws.ws_col;
     *rows = ws.ws_row;

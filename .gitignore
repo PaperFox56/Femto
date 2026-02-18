@@ -1,10 +1,8 @@
-ansi_color_cheet_sheet
 *.log
-bin/
 
+bin/
 tests/
 
 .*
 
-Makefile
-test*
+test_file

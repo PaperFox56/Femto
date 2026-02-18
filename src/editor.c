@@ -1,9 +1,4 @@
 
-
-#define _DEFAULT_SOURCE
-#define _BSD_SOURCE
-#define _GNU_SOURCE
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,6 +8,8 @@
 #include "editor/buffer.h"
 #include "editor/format.h"
 #include "editor/input.h"
+
+#include "terminal.h"
 
 #include "global.h"
 
@@ -70,8 +67,8 @@ void editor_init() {
   editor.cols_offset = 0;
   editor.rows_offset = 0;
 
-  if (getWindowSize(&editor.screen_rows, &editor.screen_cols) == -1)
-    panic("getWindowSize");
+  if (get_window_size(&editor.screen_rows, &editor.screen_cols) == -1)
+    panic("get_window_size");
 
   // The size of the margin is the number of digits in the biggest line number,
   // i.e. the line count. The best algorithm is the following (as long as the
@@ -144,63 +141,56 @@ void editor_refresh_screen() {
 }
 
 void editor_move_cursor(int key) {
-  struct CharBuffer *raw_line = ((size_t)editor.cy < file_buffer.len)
-                                    ? &file_buffer.raw[editor.cy]
-                                    : NULL;
+  struct CharBuffer *raw_line = &file_buffer.raw[editor.cy];
 
+  // This variable will allow for that one feature where you can keep the cursor at the end of the lines 
+  // even when going from a short line to a long one
+  int end_of_line = ((size_t)editor.rx == raw_line->len) ? 1 : 0; 
+	  
   switch (key) {
   case ARROW_LEFT:
     if (editor.rx > 0) {
       editor.rx--;
-      editor.cx = calculate_cx_from_rx();
     } else if (editor.cy > 0) {
       // Move to end of previous line
       editor.cy--;
       editor.rx = file_buffer.raw[editor.cy].len;
-      editor.cx = calculate_cx_from_rx();
     }
     break;
   case ARROW_RIGHT:
     if (raw_line && (size_t)editor.rx < raw_line->len) {
       editor.rx++;
-      editor.cx = calculate_cx_from_rx();
     } else if (raw_line && (size_t)editor.rx == raw_line->len &&
                (size_t)editor.cy < file_buffer.len - 1) {
       // Move to beginning of next line
       editor.cy++;
       editor.rx = 0;
-      editor.cx = 0;
     }
     break;
   case ARROW_UP:
     if (editor.cy > 0) {
       editor.cy--;
-      // Keep rx within bounds of the new line
-      if ((size_t)editor.rx > file_buffer.raw[editor.cy].len) {
-        editor.rx = file_buffer.raw[editor.cy].len;
-      }
-      editor.cx = calculate_cx_from_rx();
     }
     break;
   case ARROW_DOWN:
     if ((size_t)editor.cy < file_buffer.len - 1) {
       editor.cy++;
-      // Keep rx within bounds of the new line
-      if ((size_t)editor.rx > file_buffer.raw[editor.cy].len) {
-        editor.rx = file_buffer.raw[editor.cy].len;
-      }
-      editor.cx = calculate_cx_from_rx();
     }
     break;
   }
 
-  // Ensure rx is within bounds
-  raw_line = ((size_t)editor.cy < file_buffer.len) ? &file_buffer.raw[editor.cy]
-                                                   : NULL;
+ // Ensure rx is within bounds
+  raw_line = &file_buffer.raw[editor.cy];
+ 
+  if (end_of_line && (key == ARROW_DOWN || key == ARROW_UP)) {
+   // editor.rx = raw_line->len;
+  }
+                                                  
   if (raw_line && (size_t)editor.rx > raw_line->len) {
     editor.rx = raw_line->len;
-    editor.cx = calculate_cx_from_rx();
   }
+
+  editor.cx = calculate_cx_from_rx();
 }
 
 // Delete a single character from the raw file buffer
@@ -208,7 +198,7 @@ void editor_delete_character(int key) {
   if (key == BACKSPACE) {
     if (editor.rx == 0 && editor.cy > 0) {
       // Position cursor at the merge point
-      editor.rx = file_buffer.raw[editor.cy-1].len;
+      editor.rx = file_buffer.raw[editor.cy - 1].len;
       // Merge current line with previous line
       CharBuffer_append_text(&file_buffer.raw[editor.cy - 1],
                              file_buffer.raw[editor.cy].buf,
@@ -256,7 +246,7 @@ void editor_process_keypress() {
   if ((c >= 32 && c <= 126) || c == '\t') {
     // Insert the character at current rx position
     CharBuffer_insert_text(&file_buffer.raw[editor.cy], (char *)&c, editor.rx,
-                            1);
+                           1);
 
     // Update rx and cx
     editor.rx++;
@@ -280,6 +270,11 @@ void editor_process_keypress() {
     clear_screen();
     reset_cursor_position();
     exit(0);
+    break;
+
+  // Ctrl+S -> save file
+  case CTRL_KEY('s'):
+    editor_save_file(&file_buffer);
     break;
 
   case PAGE_UP:
@@ -337,41 +332,6 @@ void editor_process_keypress() {
 
   } break;
   }
-}
-
-void editor_open_file(const char *path) {
-  // For now we will put an arbitrary text in there
-
-  // Initialize the file buffer
-  FileBuffer_init(&file_buffer);
-
-  FILE *file = fopen(path, "r");
-  if (!file)
-    panic("fopen");
-
-  char *line = NULL;
-  size_t linecap = 0;
-  int line_size = 0;
-
-  CharBuffer_append_text(&file_buffer.path, path, strlen(path));
-  CharBuffer_append_text(&file_buffer.file_name, path, strlen(path));
-
-  while ((line_size = getline(&line, &linecap, file)) != -1) {
-    FileBuffer_append_text(&file_buffer, line, line_size);
-
-    if (file_buffer.len > MAX_LINE_COUNT) {
-      free(line);
-      fclose(file);
-
-      panic("This file is too big to be opened in the editor");
-    }
-  }
-
-  if (file_buffer.len == 0)
-    FileBuffer_add_line(&file_buffer);
-
-  free(line);
-  fclose(file);
 }
 
 void editor_on_exit() {
