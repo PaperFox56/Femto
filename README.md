@@ -33,16 +33,6 @@ make release
 make run
 ```
 
-### Installation
-
-```bash
-# Build the project
-make release
-
-# The binary will be available at bin/femto
-./bin/femto [filename]
-```
-
 ## Usage
 
 ### Opening Files
@@ -98,7 +88,7 @@ Those features were more difficult to implement than I thought. Like, how ?
 **Buffer** (in `editor/`)
 - Manages file content and formatting
 - Handles character and line buffers
-- Supports text operations (insert, delete, etc.)
+- Supports text operations (insert, delete, etc.) and memory management
 
 ## Version
 
